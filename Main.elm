@@ -104,6 +104,20 @@ move ( dx, dy ) { row, col } =
     { row = row + dx, col = col + dy }
 
 
+setStone : Board -> Stone -> Coord -> Board
+setStone board stone { row, col } =
+    let
+        updateRow oldRow =
+            Array.set col (Occupied stone) oldRow
+    in
+        case Array.get row board of
+            Just oldRow ->
+                Array.set row (updateRow oldRow) board
+
+            Nothing ->
+                board
+
+
 init : Model
 init =
     { board =
@@ -127,6 +141,7 @@ type Message
     = NoOp
     | Highlight Coord
     | RemoveHighlight
+    | ClickAt Coord
 
 
 update : Message -> Model -> ( Model, Cmd Message )
@@ -143,6 +158,18 @@ update msg model =
 
         RemoveHighlight ->
             ( { model | highlighted = Nothing }, Cmd.none )
+
+        ClickAt coord ->
+            if isValidMove model.board model.player coord then
+                ( { model
+                    | board = setStone model.board model.player coord
+                    , player = other model.player
+                    , highlighted = Nothing
+                  }
+                , Cmd.none
+                )
+            else
+                ( model, Cmd.none )
 
 
 view : Model -> Html Message
@@ -185,9 +212,17 @@ renderCell highlighted coord cell =
             :: case cell of
                 Empty ->
                     [ Svg.circle
-                        [ Attr.style [ ( "cursor", "pointer" ) ]
+                        [ Attr.style
+                            [ ( "cursor"
+                              , if highlighted then
+                                    "pointer"
+                                else
+                                    "default"
+                              )
+                            ]
                         , Events.onMouseEnter (Highlight coord)
                         , Events.onMouseLeave RemoveHighlight
+                        , Events.onClick (ClickAt coord)
                         , SvgAttr.r "4.5"
                         , SvgAttr.fill
                             (if highlighted then
