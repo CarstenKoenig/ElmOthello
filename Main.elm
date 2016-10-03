@@ -31,8 +31,9 @@ type alias Board =
     Array (Array Cell)
 
 
-type alias Cell =
-    Maybe Stone
+type Cell
+    = Empty
+    | Occupied Stone
 
 
 type Stone
@@ -49,24 +50,23 @@ validMove board stone coord =
     False
 
 
-cellAt : Board -> Coord -> Cell
+cellAt : Board -> Coord -> Maybe Cell
 cellAt board { row, col } =
     Array.get row board
         `Maybe.andThen` (Array.get col)
-        |> Maybe.withDefault Nothing
 
 
 init : Model
 init =
     { board =
-        [ List.repeat 8 Nothing
-        , List.repeat 8 Nothing
-        , List.repeat 8 Nothing
-        , [ Nothing, Nothing, Nothing, Just Black, Just White, Nothing, Nothing, Nothing ]
-        , [ Nothing, Nothing, Nothing, Just White, Just Black, Nothing, Nothing, Nothing ]
-        , List.repeat 8 Nothing
-        , List.repeat 8 Nothing
-        , List.repeat 8 Nothing
+        [ List.repeat 8 Empty
+        , List.repeat 8 Empty
+        , List.repeat 8 Empty
+        , [ Empty, Empty, Empty, Occupied Black, Occupied White, Empty, Empty, Empty ]
+        , [ Empty, Empty, Empty, Occupied White, Occupied Black, Empty, Empty, Empty ]
+        , List.repeat 8 Empty
+        , List.repeat 8 Empty
+        , List.repeat 8 Empty
         ]
             |> List.map Array.fromList
             |> Array.fromList
@@ -114,6 +114,7 @@ viewRow model row =
 viewCell : Model -> Int -> Int -> Html Message
 viewCell model row col =
     cellAt model.board { row = row, col = col }
+        |> Maybe.withDefault Empty
         |> let
             coord =
                 { row = row, col = col }
@@ -130,7 +131,7 @@ renderCell highlighted coord cell =
         ]
         (Svg.rect [ SvgAttr.x "-5", SvgAttr.y "-5", SvgAttr.width "10", SvgAttr.height "10", SvgAttr.fill "green" ] []
             :: case cell of
-                Nothing ->
+                Empty ->
                     [ Svg.circle
                         [ Attr.style [ ( "cursor", "pointer" ) ]
                         , Events.onMouseEnter (Highlight coord)
@@ -146,7 +147,7 @@ renderCell highlighted coord cell =
                         []
                     ]
 
-                Just stone ->
+                Occupied stone ->
                     renderStone stone
         )
 
