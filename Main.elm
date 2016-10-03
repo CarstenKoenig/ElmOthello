@@ -23,6 +23,7 @@ main =
 
 type alias Model =
     { board : Board
+    , player : Stone
     , highlighted : Maybe Coord
     }
 
@@ -41,19 +42,66 @@ type Stone
     | White
 
 
+other : Stone -> Stone
+other stone =
+    case stone of
+        Black ->
+            White
+
+        White ->
+            Black
+
+
 type alias Coord =
     { row : Int, col : Int }
 
 
-validMove : Board -> Stone -> Coord -> Bool
-validMove board stone coord =
-    False
+isValidMove : Board -> Stone -> Coord -> Bool
+isValidMove board stone coord =
+    List.any
+        (isValidMoveInDirection board stone coord)
+        [ ( -1, -1 ), ( -1, 0 ), ( -1, 1 ), ( 0, 1 ), ( 1, 1 ), ( 1, 0 ), ( 1, -1 ), ( 0, -1 ) ]
+
+
+isValidMoveInDirection : Board -> Stone -> Coord -> ( Int, Int ) -> Bool
+isValidMoveInDirection board stone coord dir =
+    isEmpty board coord && atLeastOneInDirection board (other stone) dir (move dir coord)
+
+
+atLeastOneInDirection : Board -> Stone -> ( Int, Int ) -> Coord -> Bool
+atLeastOneInDirection board stone dir coord =
+    isOccupied board stone coord && terminatedWith board (other stone) dir (move dir coord)
+
+
+terminatedWith : Board -> Stone -> ( Int, Int ) -> Coord -> Bool
+terminatedWith board stone dir coord =
+    isOccupied board stone coord
+        || let
+            next =
+                move dir coord
+           in
+            isOccupied board (other stone) next && terminatedWith board stone dir next
+
+
+isEmpty : Board -> Coord -> Bool
+isEmpty board coord =
+    cellAt board coord == Just Empty
+
+
+isOccupied : Board -> Stone -> Coord -> Bool
+isOccupied board stone coord =
+    cellAt board coord == Just (Occupied stone)
 
 
 cellAt : Board -> Coord -> Maybe Cell
 cellAt board { row, col } =
     Array.get row board
         `Maybe.andThen` (Array.get col)
+
+
+move : ( Int, Int ) -> Coord -> Coord
+move ( dx, dy ) { row, col } =
+    { row = row + dx, col = col + dy }
 
 
 init : Model
@@ -70,6 +118,7 @@ init =
         ]
             |> List.map Array.fromList
             |> Array.fromList
+    , player = White
     , highlighted = Nothing
     }
 
@@ -87,7 +136,10 @@ update msg model =
             ( model, Cmd.none )
 
         Highlight coord ->
-            ( { model | highlighted = Just coord }, Cmd.none )
+            if isValidMove model.board model.player coord then
+                ( { model | highlighted = Just coord }, Cmd.none )
+            else
+                ( model, Cmd.none )
 
         RemoveHighlight ->
             ( { model | highlighted = Nothing }, Cmd.none )
