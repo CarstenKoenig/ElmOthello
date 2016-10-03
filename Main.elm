@@ -56,36 +56,51 @@ type alias Coord =
     { row : Int, col : Int }
 
 
-isValidMove : Board -> Stone -> Coord -> Bool
+isValidMove : Board -> Stone -> Coord -> List Coord
 isValidMove board stone coord =
-    List.any
+    List.concatMap
         (isValidMoveInDirection board stone coord)
         [ ( -1, -1 ), ( -1, 0 ), ( -1, 1 ), ( 0, 1 ), ( 1, 1 ), ( 1, 0 ), ( 1, -1 ), ( 0, -1 ) ]
 
 
-isValidMoveInDirection : Board -> Stone -> Coord -> ( Int, Int ) -> Bool
+isValidMoveInDirection : Board -> Stone -> Coord -> ( Int, Int ) -> List Coord
 isValidMoveInDirection board stone coord dir =
-    isEmpty board coord && atLeastOneInDirection board (other stone) dir (move dir coord)
+    if not (isEmpty board coord) then
+        []
+    else
+        terminatedWith board stone dir (move dir coord) []
 
 
-atLeastOneInDirection : Board -> Stone -> ( Int, Int ) -> Coord -> Bool
-atLeastOneInDirection board stone dir coord =
-    isOccupied board stone coord && terminatedWith board (other stone) dir (move dir coord)
+terminatedWith : Board -> Stone -> ( Int, Int ) -> Coord -> List Coord -> List Coord
+terminatedWith board stone dir coord captured =
+    case occupied board coord of
+        Just stone' ->
+            if stone' == stone then
+                captured
+            else
+                terminatedWith board stone dir (move dir coord) (coord :: captured)
 
-
-terminatedWith : Board -> Stone -> ( Int, Int ) -> Coord -> Bool
-terminatedWith board stone dir coord =
-    isOccupied board stone coord
-        || let
-            next =
-                move dir coord
-           in
-            isOccupied board (other stone) next && terminatedWith board stone dir next
+        Nothing ->
+            []
 
 
 isEmpty : Board -> Coord -> Bool
 isEmpty board coord =
     cellAt board coord == Just Empty
+
+
+occupied : Board -> Coord -> Maybe Stone
+occupied board coord =
+    cellAt board coord
+        `Maybe.andThen`
+            (\cell ->
+                case cell of
+                    Empty ->
+                        Nothing
+
+                    Occupied stone ->
+                        Just stone
+            )
 
 
 isOccupied : Board -> Stone -> Coord -> Bool
@@ -104,8 +119,13 @@ move ( dx, dy ) { row, col } =
     { row = row + dx, col = col + dy }
 
 
-setStone : Board -> Stone -> Coord -> Board
-setStone board stone { row, col } =
+setStones : Board -> Stone -> List Coord -> Board
+setStones board stone =
+    List.foldl (setStone stone) board
+
+
+setStone : Stone -> Coord -> Board -> Board
+setStone stone { row, col } board =
     let
         updateRow oldRow =
             Array.set col (Occupied stone) oldRow
@@ -151,25 +171,29 @@ update msg model =
             ( model, Cmd.none )
 
         Highlight coord ->
-            if isValidMove model.board model.player coord then
-                ( { model | highlighted = Just coord }, Cmd.none )
-            else
-                ( model, Cmd.none )
+            case isValidMove model.board model.player coord of
+                [] ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model | highlighted = Just coord }, Cmd.none )
 
         RemoveHighlight ->
             ( { model | highlighted = Nothing }, Cmd.none )
 
         ClickAt coord ->
-            if isValidMove model.board model.player coord then
-                ( { model
-                    | board = setStone model.board model.player coord
-                    , player = other model.player
-                    , highlighted = Nothing
-                  }
-                , Cmd.none
-                )
-            else
-                ( model, Cmd.none )
+            case isValidMove model.board model.player coord of
+                [] ->
+                    ( model, Cmd.none )
+
+                coords ->
+                    ( { model
+                        | board = setStones model.board model.player (coord :: coords)
+                        , player = other model.player
+                        , highlighted = Nothing
+                      }
+                    , Cmd.none
+                    )
 
 
 view : Model -> Html Message
