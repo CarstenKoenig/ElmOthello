@@ -4,6 +4,7 @@ import Html exposing (Html)
 import Html as Html
 import Html.App
 import Html.Attributes as Attr
+import Html.Events as Events
 import Array exposing (Array)
 import Array as Array
 import Svg exposing (Svg, svg)
@@ -21,7 +22,9 @@ main =
 
 
 type alias Model =
-    { board : Board }
+    { board : Board
+    , highlighted : Maybe Coord
+    }
 
 
 type alias Board =
@@ -35,6 +38,10 @@ type alias Cell =
 type Stone
     = Black
     | White
+
+
+type alias Coord =
+    { row : Int, col : Int }
 
 
 init : Model
@@ -51,16 +58,23 @@ init =
         ]
             |> List.map Array.fromList
             |> Array.fromList
+    , highlighted = Nothing
     }
 
 
 type Message
     = NoOp
+    | Highlight Coord
 
 
 update : Message -> Model -> ( Model, Cmd Message )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
+        Highlight coord ->
+            ( { model | highlighted = Just coord }, Cmd.none )
 
 
 view : Model -> Html Message
@@ -86,17 +100,32 @@ viewCell model row col =
     Array.get row model.board
         `Maybe.andThen` (Array.get col)
         |> Maybe.withDefault Nothing
-        |> renderCell
+        |> let
+            coord =
+                { row = row, col = col }
+           in
+            renderCell (model.highlighted == Just coord) coord
 
 
-renderCell : Cell -> Html Message
-renderCell cell =
+renderCell : Bool -> Coord -> Cell -> Html Message
+renderCell highlighted coord cell =
     svg
-        [ SvgAttr.width "40", SvgAttr.height "40", SvgAttr.viewBox "-5 -5 10 10" ]
+        [ Events.onMouseOver (Highlight coord), SvgAttr.width "40", SvgAttr.height "40", SvgAttr.viewBox "-5 -5 10 10" ]
         (Svg.rect [ SvgAttr.x "-5", SvgAttr.y "-5", SvgAttr.width "10", SvgAttr.height "10", SvgAttr.fill "green" ] []
             :: case cell of
                 Nothing ->
-                    [ Svg.circle [ SvgAttr.r "4.5", SvgAttr.fill "#88a888" ] [] ]
+                    [ Svg.circle
+                        [ Attr.style [ ( "cursor", "pointer" ) ]
+                        , SvgAttr.r "4.5"
+                        , SvgAttr.fill
+                            (if highlighted then
+                                "#77cf77"
+                             else
+                                "#88a888"
+                            )
+                        ]
+                        []
+                    ]
 
                 Just stone ->
                     renderStone stone
