@@ -44,6 +44,18 @@ type alias Coord =
     { row : Int, col : Int }
 
 
+validMove : Board -> Stone -> Coord -> Bool
+validMove board stone coord =
+    False
+
+
+cellAt : Board -> Coord -> Cell
+cellAt board { row, col } =
+    Array.get row board
+        `Maybe.andThen` (Array.get col)
+        |> Maybe.withDefault Nothing
+
+
 init : Model
 init =
     { board =
@@ -65,6 +77,7 @@ init =
 type Message
     = NoOp
     | Highlight Coord
+    | RemoveHighlight
 
 
 update : Message -> Model -> ( Model, Cmd Message )
@@ -75,6 +88,9 @@ update msg model =
 
         Highlight coord ->
             ( { model | highlighted = Just coord }, Cmd.none )
+
+        RemoveHighlight ->
+            ( { model | highlighted = Nothing }, Cmd.none )
 
 
 view : Model -> Html Message
@@ -97,9 +113,7 @@ viewRow model row =
 
 viewCell : Model -> Int -> Int -> Html Message
 viewCell model row col =
-    Array.get row model.board
-        `Maybe.andThen` (Array.get col)
-        |> Maybe.withDefault Nothing
+    cellAt model.board { row = row, col = col }
         |> let
             coord =
                 { row = row, col = col }
@@ -110,12 +124,17 @@ viewCell model row col =
 renderCell : Bool -> Coord -> Cell -> Html Message
 renderCell highlighted coord cell =
     svg
-        [ Events.onMouseOver (Highlight coord), SvgAttr.width "40", SvgAttr.height "40", SvgAttr.viewBox "-5 -5 10 10" ]
+        [ SvgAttr.width "40"
+        , SvgAttr.height "40"
+        , SvgAttr.viewBox "-5 -5 10 10"
+        ]
         (Svg.rect [ SvgAttr.x "-5", SvgAttr.y "-5", SvgAttr.width "10", SvgAttr.height "10", SvgAttr.fill "green" ] []
             :: case cell of
                 Nothing ->
                     [ Svg.circle
                         [ Attr.style [ ( "cursor", "pointer" ) ]
+                        , Events.onMouseEnter (Highlight coord)
+                        , Events.onMouseLeave RemoveHighlight
                         , SvgAttr.r "4.5"
                         , SvgAttr.fill
                             (if highlighted then
