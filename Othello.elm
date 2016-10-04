@@ -13,7 +13,7 @@ module Othello
         , cellAt
         , countStones
         , applyMove
-        , moveAt
+        , moveAtCoord
         , emptyMoves
         , validNextMoves
         )
@@ -108,13 +108,18 @@ emptyMoves =
     Moves (Dict.empty)
 
 
+isEmptyMoves : Moves -> Bool
+isEmptyMoves (Moves dict) =
+    Dict.isEmpty dict
+
+
 applyMove : Move -> Board -> Board
 applyMove (Move { player, changedCells }) board =
     setStones board player changedCells
 
 
-moveAt : Moves -> Coord -> Maybe Move
-moveAt (Moves dict) coord =
+moveAtCoord : Moves -> Coord -> Maybe Move
+moveAtCoord (Moves dict) coord =
     Dict.get coord dict
 
 
@@ -147,7 +152,7 @@ validMoves board stone =
             (\coord ->
                 let
                     changed =
-                        isValidMove board stone coord
+                        affectedCellsByMoveAt board stone coord
                 in
                     if List.isEmpty changed then
                         Nothing
@@ -165,11 +170,11 @@ validMoves board stone =
         |> Moves
 
 
-isValidMove : Board -> Stone -> Coord -> List Coord
-isValidMove board stone coord =
+affectedCellsByMoveAt : Board -> Stone -> Coord -> List Coord
+affectedCellsByMoveAt board player coord =
     case
         List.concatMap
-            (isValidMoveInDirection board stone coord)
+            (affectedCellsByMoveAtInDirection board player coord)
             [ ( -1, -1 ), ( -1, 0 ), ( -1, 1 ), ( 0, 1 ), ( 1, 1 ), ( 1, 0 ), ( 1, -1 ), ( 0, -1 ) ]
     of
         [] ->
@@ -179,17 +184,17 @@ isValidMove board stone coord =
             coord :: cells
 
 
-isValidMoveInDirection : Board -> Stone -> Coord -> ( Int, Int ) -> List Coord
-isValidMoveInDirection board stone coord dir =
-    if not (isEmpty board coord) then
+affectedCellsByMoveAtInDirection : Board -> Stone -> Coord -> ( Int, Int ) -> List Coord
+affectedCellsByMoveAtInDirection board player coord dir =
+    if not (isEmptyCell board coord) then
         []
     else
-        terminatedWith board stone dir (move dir coord) []
+        terminatedWith board player dir (move dir coord) []
 
 
 terminatedWith : Board -> Stone -> ( Int, Int ) -> Coord -> List Coord -> List Coord
 terminatedWith board stone dir coord captured =
-    case occupied board coord of
+    case getCellOccupation board coord of
         Just stone' ->
             if stone' == stone then
                 captured
@@ -219,13 +224,13 @@ setStone stone ( row, col ) (Board board) =
                 (Board board)
 
 
-isEmpty : Board -> Coord -> Bool
-isEmpty board coord =
+isEmptyCell : Board -> Coord -> Bool
+isEmptyCell board coord =
     cellAt board coord == Just Empty
 
 
-occupied : Board -> Coord -> Maybe Stone
-occupied board coord =
+getCellOccupation : Board -> Coord -> Maybe Stone
+getCellOccupation board coord =
     cellAt board coord
         `Maybe.andThen`
             (\cell ->
@@ -241,8 +246,3 @@ occupied board coord =
 move : ( Int, Int ) -> Coord -> Coord
 move ( dx, dy ) ( row, col ) =
     ( row + dx, col + dy )
-
-
-isEmptyMoves : Moves -> Bool
-isEmptyMoves (Moves dict) =
-    Dict.isEmpty dict

@@ -87,7 +87,7 @@ update msg model =
 
 isValidMove : Model -> Coord -> Bool
 isValidMove model coord =
-    case moveAt model.validMoves coord of
+    case moveAtCoord model.validMoves coord of
         Just _ ->
             True
 
@@ -97,7 +97,7 @@ isValidMove model coord =
 
 playerMoves : Model -> Stone -> Coord -> Model
 playerMoves model player coord =
-    case moveAt model.validMoves coord of
+    case moveAtCoord model.validMoves coord of
         Nothing ->
             model
 
@@ -131,7 +131,7 @@ view : Model -> Html Message
 view model =
     Html.div
         []
-        [ Html.h1 [] [ Html.text (statusText model) ]
+        [ Html.h1 [] [ Html.text (points model ++ " = " ++ statusText model) ]
         , viewBoard model
         ]
 
@@ -164,6 +164,18 @@ winner model =
             "Black WON"
         else
             "White WON"
+
+
+points : Model -> String
+points model =
+    let
+        whites =
+            countStones model.board White
+
+        blacks =
+            countStones model.board Black
+    in
+        toString whites ++ ":" ++ toString blacks
 
 
 viewBoard : Model -> Html Message
