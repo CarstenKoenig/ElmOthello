@@ -4,22 +4,44 @@ module Othello
         , Cell(..)
         , Stone(..)
         , Coord
+        , Move
+        , Moves
         , NextMoves(..)
-        , other
+        , startBoard
+        , initialValidMoves
+        , otherColor
         , cellAt
-        , setStones
         , countStones
-        , isValidMove
-        , validMoveCoords
-        , calculateNextMoves
+        , applyMove
+        , moveAt
+        , emptyMoves
+        , validNextMoves
         )
 
 import Array exposing (Array)
 import Array as Array
+import Dict exposing (Dict)
+import Dict as Dict
 
 
-type alias Board =
-    Array (Array Cell)
+type Board
+    = Board (Array (Array Cell))
+
+
+startBoard : Board
+startBoard =
+    [ List.repeat 8 Empty
+    , List.repeat 8 Empty
+    , List.repeat 8 Empty
+    , [ Empty, Empty, Empty, Occupied Black, Occupied White, Empty, Empty, Empty ]
+    , [ Empty, Empty, Empty, Occupied White, Occupied Black, Empty, Empty, Empty ]
+    , List.repeat 8 Empty
+    , List.repeat 8 Empty
+    , List.repeat 8 Empty
+    ]
+        |> List.map Array.fromList
+        |> Array.fromList
+        |> Board
 
 
 type Cell
@@ -32,17 +54,8 @@ type Stone
     | White
 
 
-type alias Coord =
-    { row : Int, col : Int }
-
-
-type NextMoves
-    = NoValidMoves
-    | ValidMoves Stone (List Coord)
-
-
-other : Stone -> Stone
-other stone =
+otherColor : Stone -> Stone
+otherColor stone =
     case stone of
         Black ->
             White
@@ -51,64 +64,105 @@ other stone =
             Black
 
 
+type NextMoves
+    = NoValidMoves
+    | ValidMoves Stone Moves
+
+
+type Moves
+    = Moves (Dict Coord Move)
+
+
+type Move
+    = Move
+        { atCoord : Coord
+        , changedCells : List Coord
+        , player : Stone
+        }
+
+
+type alias Coord =
+    ( Int, Int )
+
+
+initialValidMoves : Moves
+initialValidMoves =
+    validMoves startBoard White
+
+
 cellAt : Board -> Coord -> Maybe Cell
-cellAt board { row, col } =
+cellAt (Board board) ( row, col ) =
     Array.get row board
         `Maybe.andThen` (Array.get col)
 
 
 countStones : Board -> Stone -> Int
-countStones board player =
+countStones (Board board) player =
     Array.toList board
         |> List.map (Array.filter (\cell -> cell == Occupied player) >> Array.length)
         |> List.sum
 
 
-setStones : Board -> Stone -> List Coord -> Board
-setStones board stone =
-    List.foldl (setStone stone) board
+emptyMoves : Moves
+emptyMoves =
+    Moves (Dict.empty)
 
 
-setStone : Stone -> Coord -> Board -> Board
-setStone stone { row, col } board =
-    let
-        updateRow oldRow =
-            Array.set col (Occupied stone) oldRow
-    in
-        case Array.get row board of
-            Just oldRow ->
-                Array.set row (updateRow oldRow) board
-
-            Nothing ->
-                board
+applyMove : Move -> Board -> Board
+applyMove (Move { player, changedCells }) board =
+    setStones board player changedCells
 
 
-calculateNextMoves : Board -> Stone -> NextMoves
-calculateNextMoves board player =
+moveAt : Moves -> Coord -> Maybe Move
+moveAt (Moves dict) coord =
+    Dict.get coord dict
+
+
+validNextMoves : Board -> Stone -> NextMoves
+validNextMoves board player =
     let
         currentMoves =
-            validMoveCoords board player
+            validMoves board player
     in
-        if not (List.isEmpty currentMoves) then
+        if not (isEmptyMoves currentMoves) then
             ValidMoves player currentMoves
         else
             let
                 otherPlayer =
-                    other player
+                    otherColor player
 
                 otherMoves =
-                    validMoveCoords board otherPlayer
+                    validMoves board otherPlayer
             in
-                if not (List.isEmpty otherMoves) then
+                if not (isEmptyMoves otherMoves) then
                     ValidMoves otherPlayer otherMoves
                 else
                     NoValidMoves
 
 
-validMoveCoords : Board -> Stone -> List Coord
-validMoveCoords board stone =
-    List.concatMap (\r -> List.map (\c -> { row = r, col = c }) [0..7]) [0..7]
-        |> List.filter (\coord -> not (List.isEmpty (isValidMove board stone coord)))
+validMoves : Board -> Stone -> Moves
+validMoves board stone =
+    List.concatMap (\r -> List.map (\c -> ( r, c )) [0..7]) [0..7]
+        |> List.filterMap
+            (\coord ->
+                let
+                    changed =
+                        isValidMove board stone coord
+                in
+                    if List.isEmpty changed then
+                        Nothing
+                    else
+                        Just
+                            ( coord
+                            , Move
+                                { atCoord = coord
+                                , changedCells = changed
+                                , player = stone
+                                }
+                            )
+            )
+        |> Dict.fromList
+        |> Moves
 
 
 isValidMove : Board -> Stone -> Coord -> List Coord
@@ -146,6 +200,25 @@ terminatedWith board stone dir coord captured =
             []
 
 
+setStones : Board -> Stone -> List Coord -> Board
+setStones board stone =
+    List.foldl (setStone stone) board
+
+
+setStone : Stone -> Coord -> Board -> Board
+setStone stone ( row, col ) (Board board) =
+    let
+        updateRow oldRow =
+            Array.set col (Occupied stone) oldRow
+    in
+        case Array.get row board of
+            Just oldRow ->
+                Board (Array.set row (updateRow oldRow) board)
+
+            Nothing ->
+                (Board board)
+
+
 isEmpty : Board -> Coord -> Bool
 isEmpty board coord =
     cellAt board coord == Just Empty
@@ -166,5 +239,10 @@ occupied board coord =
 
 
 move : ( Int, Int ) -> Coord -> Coord
-move ( dx, dy ) { row, col } =
-    { row = row + dx, col = col + dy }
+move ( dx, dy ) ( row, col ) =
+    ( row + dx, col + dy )
+
+
+isEmptyMoves : Moves -> Bool
+isEmptyMoves (Moves dict) =
+    Dict.isEmpty dict

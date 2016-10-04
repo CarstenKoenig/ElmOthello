@@ -5,8 +5,6 @@ import Html as Html
 import Html.App
 import Html.Attributes as Attr
 import Html.Events as Events
-import Array exposing (Array)
-import Array as Array
 import Svg exposing (Svg, svg)
 import Svg as Svg
 import Svg.Attributes as SvgAttr
@@ -32,31 +30,17 @@ type alias Model =
     { board : Board
     , game : GameState
     , hoover : Maybe Coord
-    , highlighted : List Coord
+    , validMoves : Moves
     }
 
 
 init : Model
 init =
-    let
-        initBoard =
-            [ List.repeat 8 Empty
-            , List.repeat 8 Empty
-            , List.repeat 8 Empty
-            , [ Empty, Empty, Empty, Occupied Black, Occupied White, Empty, Empty, Empty ]
-            , [ Empty, Empty, Empty, Occupied White, Occupied Black, Empty, Empty, Empty ]
-            , List.repeat 8 Empty
-            , List.repeat 8 Empty
-            , List.repeat 8 Empty
-            ]
-                |> List.map Array.fromList
-                |> Array.fromList
-    in
-        { board = initBoard
-        , game = Moving White
-        , hoover = Nothing
-        , highlighted = validMoveCoords initBoard White
-        }
+    { board = startBoard
+    , game = Moving White
+    , hoover = Nothing
+    , validMoves = initialValidMoves
+    }
 
 
 currentPlayer : Model -> Maybe Stone
@@ -84,7 +68,7 @@ update msg model =
         Hoover over ->
             case over of
                 Just coord ->
-                    if List.member coord model.highlighted then
+                    if isValidMove model coord then
                         ( { model | hoover = Just coord }, Cmd.none )
                     else
                         ( { model | hoover = Nothing }, Cmd.none )
@@ -101,19 +85,29 @@ update msg model =
                     ( playerMoves model player coord, Cmd.none )
 
 
+isValidMove : Model -> Coord -> Bool
+isValidMove model coord =
+    case moveAt model.validMoves coord of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
 playerMoves : Model -> Stone -> Coord -> Model
 playerMoves model player coord =
-    case isValidMove model.board player coord of
-        [] ->
+    case moveAt model.validMoves coord of
+        Nothing ->
             model
 
-        coords ->
+        Just move ->
             let
                 board' =
-                    setStones model.board player coords
+                    applyMove move model.board
 
                 nextMoves =
-                    calculateNextMoves board' (other player)
+                    validNextMoves board' (otherColor player)
             in
                 case nextMoves of
                     NoValidMoves ->
@@ -121,15 +115,15 @@ playerMoves model player coord =
                             | board = board'
                             , game = GameOver
                             , hoover = Nothing
-                            , highlighted = []
+                            , validMoves = emptyMoves
                         }
 
-                    ValidMoves player' coords ->
+                    ValidMoves player' moves ->
                         { model
                             | board = board'
                             , game = Moving player'
                             , hoover = Nothing
-                            , highlighted = coords
+                            , validMoves = moves
                         }
 
 
@@ -187,14 +181,14 @@ viewRow model row =
 
 viewCell : Model -> Int -> Int -> Html Message
 viewCell model row col =
-    cellAt model.board { row = row, col = col }
+    cellAt model.board ( row, col )
         |> Maybe.withDefault Empty
         |> let
             coord =
-                { row = row, col = col }
+                ( row, col )
            in
             renderCell
-                (List.member coord model.highlighted)
+                (isValidMove model coord)
                 (model.hoover == Just coord)
                 (currentPlayer model)
                 coord
