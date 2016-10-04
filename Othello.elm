@@ -8,6 +8,7 @@ module Othello
         , cellAt
         , setStones
         , isValidMove
+        , validMoveCoords
         )
 
 import Array exposing (Array)
@@ -65,6 +66,12 @@ setStone stone { row, col } board =
 
             Nothing ->
                 board
+
+
+validMoveCoords : Board -> Stone -> List Coord
+validMoveCoords board stone =
+    List.concatMap (\r -> List.map (\c -> { row = r, col = c }) [0..7]) [0..7]
+        |> List.filter (\coord -> not (List.isEmpty (isValidMove board stone coord)))
 
 
 isValidMove : Board -> Stone -> Coord -> List Coord

@@ -26,33 +26,37 @@ main =
 type alias Model =
     { board : Board
     , player : Stone
-    , highlighted : Maybe Coord
+    , hoover : Maybe Coord
+    , highlighted : List Coord
     }
 
 
 init : Model
 init =
-    { board =
-        [ List.repeat 8 Empty
-        , List.repeat 8 Empty
-        , List.repeat 8 Empty
-        , [ Empty, Empty, Empty, Occupied Black, Occupied White, Empty, Empty, Empty ]
-        , [ Empty, Empty, Empty, Occupied White, Occupied Black, Empty, Empty, Empty ]
-        , List.repeat 8 Empty
-        , List.repeat 8 Empty
-        , List.repeat 8 Empty
-        ]
-            |> List.map Array.fromList
-            |> Array.fromList
-    , player = White
-    , highlighted = Nothing
-    }
+    let
+        initBoard =
+            [ List.repeat 8 Empty
+            , List.repeat 8 Empty
+            , List.repeat 8 Empty
+            , [ Empty, Empty, Empty, Occupied Black, Occupied White, Empty, Empty, Empty ]
+            , [ Empty, Empty, Empty, Occupied White, Occupied Black, Empty, Empty, Empty ]
+            , List.repeat 8 Empty
+            , List.repeat 8 Empty
+            , List.repeat 8 Empty
+            ]
+                |> List.map Array.fromList
+                |> Array.fromList
+    in
+        { board = initBoard
+        , player = White
+        , hoover = Nothing
+        , highlighted = validMoveCoords initBoard White
+        }
 
 
 type Message
     = NoOp
-    | Highlight Coord
-    | RemoveHighlight
+    | Hoover (Maybe Coord)
     | ClickAt Coord
 
 
@@ -62,16 +66,18 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        Highlight coord ->
-            case isValidMove model.board model.player coord of
-                [] ->
-                    ( model, Cmd.none )
+        Hoover over ->
+            case over of
+                Just coord ->
+                    case isValidMove model.board model.player coord of
+                        [] ->
+                            ( { model | hoover = Nothing }, Cmd.none )
 
-                _ ->
-                    ( { model | highlighted = Just coord }, Cmd.none )
+                        _ ->
+                            ( { model | hoover = Just coord }, Cmd.none )
 
-        RemoveHighlight ->
-            ( { model | highlighted = Nothing }, Cmd.none )
+                Nothing ->
+                    ( { model | hoover = Nothing }, Cmd.none )
 
         ClickAt coord ->
             case isValidMove model.board model.player coord of
@@ -79,13 +85,24 @@ update msg model =
                     ( model, Cmd.none )
 
                 coords ->
-                    ( { model
-                        | board = setStones model.board model.player coords
-                        , player = other model.player
-                        , highlighted = Nothing
-                      }
-                    , Cmd.none
-                    )
+                    let
+                        board' =
+                            setStones model.board model.player coords
+
+                        player' =
+                            other model.player
+
+                        highlighted' =
+                            validMoveCoords board' player'
+                    in
+                        ( { model
+                            | board = board'
+                            , player = player'
+                            , hoover = Nothing
+                            , highlighted = highlighted'
+                          }
+                        , Cmd.none
+                        )
 
 
 view : Model -> Html Message
@@ -114,11 +131,15 @@ viewCell model row col =
             coord =
                 { row = row, col = col }
            in
-            renderCell (model.highlighted == Just coord) coord
+            renderCell
+                (List.member coord model.highlighted)
+                (model.hoover == Just coord)
+                model.player
+                coord
 
 
-renderCell : Bool -> Coord -> Cell -> Html Message
-renderCell highlighted coord cell =
+renderCell : Bool -> Bool -> Stone -> Coord -> Cell -> Html Message
+renderCell highlighted hooverOver player coord cell =
     svg
         [ SvgAttr.width "40"
         , SvgAttr.height "40"
@@ -136,15 +157,17 @@ renderCell highlighted coord cell =
                                     "default"
                               )
                             ]
-                        , Events.onMouseEnter (Highlight coord)
-                        , Events.onMouseLeave RemoveHighlight
+                        , Events.onMouseEnter (Hoover (Just coord))
+                        , Events.onMouseLeave (Hoover Nothing)
                         , Events.onClick (ClickAt coord)
                         , SvgAttr.r "4.5"
                         , SvgAttr.fill
-                            (if highlighted then
-                                "#88efa8"
+                            (if hooverOver then
+                                stoneColor player
+                             else if highlighted then
+                                highlightColor
                              else
-                                "#77a777"
+                                holeColor
                             )
                         ]
                         []
@@ -157,9 +180,34 @@ renderCell highlighted coord cell =
 
 renderStone : Stone -> List (Svg Message)
 renderStone stone =
-    case stone of
-        Black ->
-            [ Svg.circle [ SvgAttr.r "4.5", SvgAttr.fill "#020202" ] [] ]
+    [ Svg.circle [ SvgAttr.r "4.5", SvgAttr.fill (stoneColor stone) ] [] ]
 
+
+stoneColor : Stone -> String
+stoneColor stone =
+    case stone of
         White ->
-            [ Svg.circle [ SvgAttr.r "4.5", SvgAttr.fill "#efefef" ] [] ]
+            whiteColor
+
+        Black ->
+            blackColor
+
+
+whiteColor : String
+whiteColor =
+    "#efefef"
+
+
+blackColor : String
+blackColor =
+    "#020202"
+
+
+highlightColor : String
+highlightColor =
+    "#77c777"
+
+
+holeColor : String
+holeColor =
+    "#77a777"
