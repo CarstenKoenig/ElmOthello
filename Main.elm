@@ -135,7 +135,41 @@ playerMoves model player coord =
 
 view : Model -> Html Message
 view model =
-    viewBoard model
+    Html.div
+        []
+        [ Html.h1 [] [ Html.text (statusText model) ]
+        , viewBoard model
+        ]
+
+
+statusText : Model -> String
+statusText model =
+    case model.game of
+        GameOver ->
+            "Game Over - " ++ winner model
+
+        Moving Black ->
+            "Black's turn"
+
+        Moving White ->
+            "White's turn"
+
+
+winner : Model -> String
+winner model =
+    let
+        whites =
+            countStones model.board White
+
+        blacks =
+            countStones model.board Black
+    in
+        if whites == blacks then
+            "draw"
+        else if whites < blacks then
+            "Black WON"
+        else
+            "White WON"
 
 
 viewBoard : Model -> Html Message

@@ -8,6 +8,7 @@ module Othello
         , other
         , cellAt
         , setStones
+        , countStones
         , isValidMove
         , validMoveCoords
         , calculateNextMoves
@@ -54,6 +55,13 @@ cellAt : Board -> Coord -> Maybe Cell
 cellAt board { row, col } =
     Array.get row board
         `Maybe.andThen` (Array.get col)
+
+
+countStones : Board -> Stone -> Int
+countStones board player =
+    Array.toList board
+        |> List.map (Array.filter (\cell -> cell == Occupied player) >> Array.length)
+        |> List.sum
 
 
 setStones : Board -> Stone -> List Coord -> Board
