@@ -4,11 +4,13 @@ module Othello
         , Cell(..)
         , Stone(..)
         , Coord
+        , NextMoves(..)
         , other
         , cellAt
         , setStones
         , isValidMove
         , validMoveCoords
+        , calculateNextMoves
         )
 
 import Array exposing (Array)
@@ -31,6 +33,11 @@ type Stone
 
 type alias Coord =
     { row : Int, col : Int }
+
+
+type NextMoves
+    = NoValidMoves
+    | ValidMoves Stone (List Coord)
 
 
 other : Stone -> Stone
@@ -66,6 +73,28 @@ setStone stone { row, col } board =
 
             Nothing ->
                 board
+
+
+calculateNextMoves : Board -> Stone -> NextMoves
+calculateNextMoves board player =
+    let
+        currentMoves =
+            validMoveCoords board player
+    in
+        if not (List.isEmpty currentMoves) then
+            ValidMoves player currentMoves
+        else
+            let
+                otherPlayer =
+                    other player
+
+                otherMoves =
+                    validMoveCoords board otherPlayer
+            in
+                if not (List.isEmpty otherMoves) then
+                    ValidMoves otherPlayer otherMoves
+                else
+                    NoValidMoves
 
 
 validMoveCoords : Board -> Stone -> List Coord

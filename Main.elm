@@ -23,9 +23,14 @@ main =
         }
 
 
+type GameState
+    = Moving Stone
+    | GameOver
+
+
 type alias Model =
     { board : Board
-    , player : Stone
+    , game : GameState
     , hoover : Maybe Coord
     , highlighted : List Coord
     }
@@ -48,10 +53,20 @@ init =
                 |> Array.fromList
     in
         { board = initBoard
-        , player = White
+        , game = Moving White
         , hoover = Nothing
         , highlighted = validMoveCoords initBoard White
         }
+
+
+currentPlayer : Model -> Maybe Stone
+currentPlayer model =
+    case model.game of
+        GameOver ->
+            Nothing
+
+        Moving player ->
+            Just player
 
 
 type Message
@@ -69,40 +84,53 @@ update msg model =
         Hoover over ->
             case over of
                 Just coord ->
-                    case isValidMove model.board model.player coord of
-                        [] ->
-                            ( { model | hoover = Nothing }, Cmd.none )
-
-                        _ ->
-                            ( { model | hoover = Just coord }, Cmd.none )
+                    if List.member coord model.highlighted then
+                        ( { model | hoover = Just coord }, Cmd.none )
+                    else
+                        ( { model | hoover = Nothing }, Cmd.none )
 
                 Nothing ->
                     ( { model | hoover = Nothing }, Cmd.none )
 
         ClickAt coord ->
-            case isValidMove model.board model.player coord of
-                [] ->
+            case model.game of
+                GameOver ->
                     ( model, Cmd.none )
 
-                coords ->
-                    let
-                        board' =
-                            setStones model.board model.player coords
+                Moving player ->
+                    ( playerMoves model player coord, Cmd.none )
 
-                        player' =
-                            other model.player
 
-                        highlighted' =
-                            validMoveCoords board' player'
-                    in
-                        ( { model
+playerMoves : Model -> Stone -> Coord -> Model
+playerMoves model player coord =
+    case isValidMove model.board player coord of
+        [] ->
+            model
+
+        coords ->
+            let
+                board' =
+                    setStones model.board player coords
+
+                nextMoves =
+                    calculateNextMoves board' (other player)
+            in
+                case nextMoves of
+                    NoValidMoves ->
+                        { model
                             | board = board'
-                            , player = player'
+                            , game = GameOver
                             , hoover = Nothing
-                            , highlighted = highlighted'
-                          }
-                        , Cmd.none
-                        )
+                            , highlighted = []
+                        }
+
+                    ValidMoves player' coords ->
+                        { model
+                            | board = board'
+                            , game = Moving player'
+                            , hoover = Nothing
+                            , highlighted = coords
+                        }
 
 
 view : Model -> Html Message
@@ -134,11 +162,11 @@ viewCell model row col =
             renderCell
                 (List.member coord model.highlighted)
                 (model.hoover == Just coord)
-                model.player
+                (currentPlayer model)
                 coord
 
 
-renderCell : Bool -> Bool -> Stone -> Coord -> Cell -> Html Message
+renderCell : Bool -> Bool -> Maybe Stone -> Coord -> Cell -> Html Message
 renderCell highlighted hooverOver player coord cell =
     svg
         [ SvgAttr.width "40"
@@ -174,23 +202,26 @@ renderCell highlighted hooverOver player coord cell =
                     ]
 
                 Occupied stone ->
-                    renderStone stone
+                    renderStone (Just stone)
         )
 
 
-renderStone : Stone -> List (Svg Message)
+renderStone : Maybe Stone -> List (Svg Message)
 renderStone stone =
     [ Svg.circle [ SvgAttr.r "4.5", SvgAttr.fill (stoneColor stone) ] [] ]
 
 
-stoneColor : Stone -> String
+stoneColor : Maybe Stone -> String
 stoneColor stone =
     case stone of
-        White ->
+        Just White ->
             whiteColor
 
-        Black ->
+        Just Black ->
             blackColor
+
+        Nothing ->
+            holeColor
 
 
 whiteColor : String
