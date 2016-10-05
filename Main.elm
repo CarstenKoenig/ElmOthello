@@ -1,15 +1,16 @@
 module Main exposing (..)
 
-import Html exposing (Html)
+import AI exposing (..)
 import Html as Html
+import Html exposing (Html)
 import Html.App
 import Html.Attributes as Attr
 import Html.Events as Events
-import Svg exposing (Svg, svg)
-import Svg as Svg
-import Svg.Attributes as SvgAttr
 import Othello exposing (..)
-import AI exposing (..)
+import Svg as Svg
+import Svg exposing (Svg, svg)
+import Svg.Attributes as SvgAttr
+import Task exposing (Task, fail, succeed)
 
 
 main : Program Never
@@ -58,6 +59,8 @@ type Message
     = NoOp
     | Hoover (Maybe Coord)
     | ClickAt Coord
+    | BlackAiMoved Move
+    | BlackAiFailed
 
 
 update : Message -> Model -> ( Model, Cmd Message )
@@ -77,6 +80,18 @@ update msg model =
                 Nothing ->
                     ( { model | hoover = Nothing }, Cmd.none )
 
+        BlackAiMoved move ->
+            computerMoves model move
+
+        BlackAiFailed ->
+            ( { model
+                | game = GameOver
+                , hoover = Nothing
+                , validMoves = emptyMoves
+              }
+            , Cmd.none
+            )
+
         ClickAt coord ->
             case model.game of
                 GameOver ->
@@ -86,30 +101,7 @@ update msg model =
                     ( model, Cmd.none )
 
                 Moving White ->
-                    let
-                        model' =
-                            playerMoves model White coord
-                    in
-                        case model'.game of
-                            GameOver ->
-                                ( model', Cmd.none )
-
-                            Moving White ->
-                                ( model', Cmd.none )
-
-                            Moving Black ->
-                                case blackAI 3 model'.board of
-                                    Nothing ->
-                                        ( { model'
-                                            | game = GameOver
-                                            , hoover = Nothing
-                                            , validMoves = emptyMoves
-                                          }
-                                        , Cmd.none
-                                        )
-
-                                    Just move ->
-                                        ( playerMoves model' Black (moveCoord move), Cmd.none )
+                    humanMoves model coord
 
 
 isValidMove : Model -> Coord -> Bool
@@ -122,36 +114,81 @@ isValidMove model coord =
             False
 
 
-playerMoves : Model -> Stone -> Coord -> Model
-playerMoves model player coord =
+calculateAiMove : Board -> Cmd Message
+calculateAiMove board =
+    Task.perform (\_ -> BlackAiFailed) BlackAiMoved (computerMove board)
+
+
+computerMove : Board -> Task () Move
+computerMove board =
+    case blackAI 3 board of
+        Nothing ->
+            fail ()
+
+        Just move ->
+            succeed move
+
+
+computerMoves : Model -> Move -> ( Model, Cmd Message )
+computerMoves model move =
+    let
+        board' =
+            applyMove move model.board
+
+        nextMoves =
+            validNextMoves board' White
+    in
+        case nextMoves of
+            NoValidMoves ->
+                ( { model
+                    | board = board'
+                    , game = GameOver
+                    , hoover = Nothing
+                    , validMoves = emptyMoves
+                  }
+                , Cmd.none
+                )
+
+            ValidMoves White moves ->
+                ( { model
+                    | board = board'
+                    , game = Moving White
+                    , hoover = Nothing
+                    , validMoves = moves
+                  }
+                , Cmd.none
+                )
+
+            ValidMoves Black moves ->
+                ( { model
+                    | board = board'
+                    , game = Moving Black
+                    , hoover = Nothing
+                    , validMoves = emptyMoves
+                  }
+                , calculateAiMove board'
+                )
+
+
+humanMoves : Model -> Coord -> ( Model, Cmd Message )
+humanMoves model coord =
     case moveAtCoord model.validMoves coord of
         Nothing ->
-            model
+            ( model, Cmd.none )
 
         Just move ->
             let
                 board' =
                     applyMove move model.board
-
-                nextMoves =
-                    validNextMoves board' (otherColor player)
             in
-                case nextMoves of
-                    NoValidMoves ->
-                        { model
-                            | board = board'
-                            , game = GameOver
-                            , hoover = Nothing
-                            , validMoves = emptyMoves
-                        }
-
-                    ValidMoves player' moves ->
-                        { model
-                            | board = board'
-                            , game = Moving player'
-                            , hoover = Nothing
-                            , validMoves = moves
-                        }
+                ( { model
+                    | board = board'
+                    , game = Moving Black
+                    , hoover = Nothing
+                    , validMoves = emptyMoves
+                  }
+                , calculateAiMove board'
+                )
 
 
 view : Model -> Html Message
