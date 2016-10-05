@@ -1,6 +1,8 @@
 # ElmOthello
 the well known [Othello game](https://en.wikipedia.org/wiki/Reversi#) using Elm
 
+![Othello](/Othello.png)
+
 ## Basics
 All the basic modelling is inside the [Othello module](/Othello.elm) and [Main](/Main.elm) implements some very basic display using
 `Div`s with columns of `Svg` elements (**TODO** add turn animations of some sort).
