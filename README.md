@@ -1,7 +1,7 @@
 # ElmOthello
 the well known [Othello game](https://en.wikipedia.org/wiki/Reversi#) using Elm
 
-![Othello](/Othello.png)
+![Othello](/Othello.PNG)
 
 ## Basics
 All the basic modelling is inside the [Othello module](/Othello.elm) and [Main](/Main.elm) implements some very basic display using
