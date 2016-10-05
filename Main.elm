@@ -13,6 +13,11 @@ import Svg.Attributes as SvgAttr
 import Task exposing (Task, fail, succeed)
 
 
+difficulty : Level
+difficulty =
+    3
+
+
 main : Program Never
 main =
     Html.App.program
@@ -121,7 +126,7 @@ calculateAiMove board =
 
 computerMove : Board -> Task () Move
 computerMove board =
-    case blackAI 3 board of
+    case blackAI difficulty board of
         Nothing ->
             fail ()
 
