@@ -1,7 +1,7 @@
 # ElmOthello
 the well known [Othello game](https://en.wikipedia.org/wiki/Reversi#) using Elm
 
-![Othello](/Othello.PNG)
+<a href='http://carstenkoenig.github.io/ElmOthello' target='_blank'>![Othello](/Othello.PNG)</a>
 
 You can [**play the game here**](http://carstenkoenig.github.io/ElmOthello)
 
