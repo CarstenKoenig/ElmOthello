@@ -1,6 +1,6 @@
 module Othello
     exposing
-        ( Board
+        ( Board(..)
         , Cell(..)
         , Stone(..)
         , Coord

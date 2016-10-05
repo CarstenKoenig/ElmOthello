@@ -4,8 +4,9 @@ module AI
         , blackAI
         )
 
-import Othello exposing (..)
+import Array exposing (Array)
 import MiniMax exposing (..)
+import Othello exposing (..)
 
 
 type alias Level =
@@ -37,8 +38,46 @@ moves playerType board =
 
 
 heuristic : Board -> Int
-heuristic board =
-    countStones board Black - countStones board White
+heuristic (Board rows) =
+    valueRows coordValues rows
+
+
+coordValues : List (List Int)
+coordValues =
+    [ [ 10, -5, 6, 5, 5, 6, -5, 10 ]
+    , [ -5, -8, -4, -4, -4, -4, -8, -5 ]
+    , [ 6, -4, 2, 3, 3, 2, -4, 6 ]
+    , [ 5, -4, 3, 4, 4, 3, -4, 6 ]
+    , [ 5, -4, 3, 4, 4, 3, -4, 6 ]
+    , [ 6, -4, 2, 3, 3, 2, -4, 6 ]
+    , [ -5, -8, -4, -4, -4, -4, -8, -5 ]
+    , [ 10, -5, 6, 5, 5, 6, -5, 10 ]
+    ]
+
+
+valueRows : List (List Int) -> Array (Array Cell) -> Int
+valueRows factors rows =
+    List.map2 valueRow factors (Array.toList rows)
+        |> List.sum
+
+
+valueRow : List Int -> Array Cell -> Int
+valueRow factors cells =
+    List.map2 valueCell factors (Array.toList cells)
+        |> List.sum
+
+
+valueCell : Int -> Cell -> Int
+valueCell factor cell =
+    case cell of
+        Empty ->
+            0
+
+        Occupied Black ->
+            factor
+
+        Occupied White ->
+            -factor
 
 
 toStone : PlayerType -> Stone
