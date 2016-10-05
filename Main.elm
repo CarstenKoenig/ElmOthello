@@ -9,6 +9,7 @@ import Svg exposing (Svg, svg)
 import Svg as Svg
 import Svg.Attributes as SvgAttr
 import Othello exposing (..)
+import AI exposing (..)
 
 
 main : Program Never
@@ -81,8 +82,34 @@ update msg model =
                 GameOver ->
                     ( model, Cmd.none )
 
-                Moving player ->
-                    ( playerMoves model player coord, Cmd.none )
+                Moving Black ->
+                    ( model, Cmd.none )
+
+                Moving White ->
+                    let
+                        model' =
+                            playerMoves model White coord
+                    in
+                        case model'.game of
+                            GameOver ->
+                                ( model', Cmd.none )
+
+                            Moving White ->
+                                ( model', Cmd.none )
+
+                            Moving Black ->
+                                case blackAI 3 model'.board of
+                                    Nothing ->
+                                        ( { model'
+                                            | game = GameOver
+                                            , hoover = Nothing
+                                            , validMoves = emptyMoves
+                                          }
+                                        , Cmd.none
+                                        )
+
+                                    Just move ->
+                                        ( playerMoves model' Black (moveCoord move), Cmd.none )
 
 
 isValidMove : Model -> Coord -> Bool

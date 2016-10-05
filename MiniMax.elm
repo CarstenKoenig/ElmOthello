@@ -1,25 +1,25 @@
 module MiniMax
     exposing
         ( Value
-        , Heuristic
-        , ChildGen
+        , Problem
         , Depth
-        , PlayerType
+        , PlayerType(..)
         , miniMax
         , findMax
         )
+
+import Random exposing (minInt, maxInt)
 
 
 type alias Value =
     Int
 
 
-type alias Heuristic state =
-    state -> Value
-
-
-type alias ChildGen state =
-    state -> List state
+type alias Problem state move =
+    { heuristic : state -> Value
+    , moves : PlayerType -> state -> Maybe ( PlayerType, List move )
+    , apply : move -> state -> state
+    }
 
 
 type alias Depth =
@@ -31,44 +31,74 @@ type PlayerType
     | Minimizing
 
 
-findMax : Heuristic state -> ChildGen state -> Depth -> state -> Value
-findMax heuristic children depth state =
-    miniMax heuristic children depth Maximizing state
+findMax : Problem state move -> Depth -> state -> ( Maybe move, Value )
+findMax problem depth state =
+    miniMax problem depth Maximizing state
 
 
-miniMax : Heuristic state -> ChildGen state -> Depth -> PlayerType -> state -> Value
-miniMax heuristic children depth playerType state =
+miniMax : Problem state move -> Depth -> PlayerType -> state -> ( Maybe move, Value )
+miniMax problem depth playerType state =
     let
-        bestOfChildren cs =
-            List.map (miniMax heuristic children (depth - 1) (otherType playerType)) cs
-                |> accumChildHeuristics playerType
+        bestMove playerType =
+            List.map
+                (\mv ->
+                    let
+                        state' =
+                            problem.apply mv state
+
+                        ( _, bestVal ) =
+                            miniMax problem (depth - 1) (otherType playerType) state'
+                    in
+                        ( Just mv, bestVal )
+                )
+                >> searchBest playerType
     in
         if depth == 0 then
-            heuristic state
+            ( Nothing, problem.heuristic state )
         else
-            case bestOfChildren (children state) of
-                Nothing ->
-                    heuristic state
+            case problem.moves playerType state of
+                Just ( playerType, moves ) ->
+                    bestMove playerType moves
 
-                Just value ->
-                    value
+                Nothing ->
+                    ( Nothing, problem.heuristic state )
+
+
+searchBest : PlayerType -> List ( Maybe move, Value ) -> ( Maybe move, Value )
+searchBest playerType =
+    let
+        cmp =
+            case playerType of
+                Maximizing ->
+                    (>)
+
+                Minimizing ->
+                    (<)
+
+        compare =
+            (\( mv, val ) ( bestMv, bestVal ) ->
+                if val `cmp` bestVal then
+                    ( mv, val )
+                else
+                    ( bestMv, bestVal )
+            )
+
+        start =
+            case playerType of
+                Maximizing ->
+                    ( Nothing, minInt )
+
+                Minimizing ->
+                    ( Nothing, maxInt )
+    in
+        List.foldl compare start
 
 
 otherType : PlayerType -> PlayerType
 otherType playerType =
     case playerType of
-        Maximizing ->
-            Minimizing
-
         Minimizing ->
             Maximizing
 
-
-accumChildHeuristics : PlayerType -> (List Int -> Maybe Int)
-accumChildHeuristics playerType =
-    case playerType of
         Maximizing ->
-            List.maximum
-
-        Minimizing ->
-            List.minimum
+            Minimizing

@@ -14,7 +14,9 @@ module Othello
         , countStones
         , applyMove
         , moveAtCoord
+        , moveCoord
         , emptyMoves
+        , toMoveList
         , validNextMoves
         )
 
@@ -118,9 +120,19 @@ applyMove (Move { player, changedCells }) board =
     setStones board player changedCells
 
 
+toMoveList : Moves -> List Move
+toMoveList (Moves dict) =
+    Dict.values dict
+
+
 moveAtCoord : Moves -> Coord -> Maybe Move
 moveAtCoord (Moves dict) coord =
     Dict.get coord dict
+
+
+moveCoord : Move -> Coord
+moveCoord (Move move) =
+    move.atCoord
 
 
 validNextMoves : Board -> Stone -> NextMoves
