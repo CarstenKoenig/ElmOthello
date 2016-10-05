@@ -12,7 +12,7 @@
   </head>
 
   <body>
-
+    <script src="javascripts/othello.js"></script>
     <!-- HEADER -->
     <div id="header_wrap" class="outer">
         <header class="inner">
@@ -31,8 +31,7 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h1>
-<a id="elmothello" class="anchor" href="#elmothello" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ElmOthello</h1>
+        <div id="game"></div>
       </section>
     </div>
 
@@ -44,7 +43,10 @@
       </footer>
     </div>
 
-    
+    <script>
+      var node = document.getElementById('game');
+      var app = Elm.Main.embed(node);
+    </script>    
 
   </body>
 </html>
