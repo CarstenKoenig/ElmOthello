@@ -19,7 +19,15 @@ blackAI level board =
         ( mv, _ ) =
             findMax othelloProblem level board
     in
-        mv
+        case mv of
+            Just mv' ->
+                if movePlayer mv' == Black then
+                    mv
+                else
+                    Nothing
+
+            Nothing ->
+                Nothing
 
 
 othelloProblem : Problem Board Move

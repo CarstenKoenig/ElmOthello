@@ -185,15 +185,40 @@ humanMoves model coord =
             let
                 board' =
                     applyMove move model.board
+
+                nextMoves =
+                    validNextMoves board' Black
             in
-                ( { model
-                    | board = board'
-                    , game = Moving Black
-                    , hoover = Nothing
-                    , validMoves = emptyMoves
-                  }
-                , calculateAiMove board'
-                )
+                case nextMoves of
+                    NoValidMoves ->
+                        ( { model
+                            | board = board'
+                            , game = GameOver
+                            , hoover = Nothing
+                            , validMoves = emptyMoves
+                          }
+                        , Cmd.none
+                        )
+
+                    ValidMoves White moves ->
+                        ( { model
+                            | board = board'
+                            , game = Moving White
+                            , hoover = Nothing
+                            , validMoves = moves
+                          }
+                        , Cmd.none
+                        )
+
+                    ValidMoves Black moves ->
+                        ( { model
+                            | board = board'
+                            , game = Moving Black
+                            , hoover = Nothing
+                            , validMoves = emptyMoves
+                          }
+                        , calculateAiMove board'
+                        )
 
 
 view : Model -> Html Message

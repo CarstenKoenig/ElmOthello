@@ -15,6 +15,7 @@ module Othello
         , applyMove
         , moveAtCoord
         , moveCoord
+        , movePlayer
         , emptyMoves
         , toMoveList
         , validNextMoves
@@ -133,6 +134,11 @@ moveAtCoord (Moves dict) coord =
 moveCoord : Move -> Coord
 moveCoord (Move move) =
     move.atCoord
+
+
+movePlayer : Move -> Stone
+movePlayer (Move move) =
+    move.player
 
 
 validNextMoves : Board -> Stone -> NextMoves

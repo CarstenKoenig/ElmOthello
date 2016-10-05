@@ -57,8 +57,8 @@ miniMax problem depth playerType state =
             ( Nothing, problem.heuristic state )
         else
             case problem.moves playerType state of
-                Just ( playerType, moves ) ->
-                    bestMove playerType moves
+                Just ( playerType', moves ) ->
+                    bestMove playerType' moves
 
                 Nothing ->
                     ( Nothing, problem.heuristic state )
